@@ -1,0 +1,13 @@
+{
+  "name": "cubeproxy-horizon-chart",
+  "version": "1.0.0",
+  "description": "iPhone 3G compatible web app with horizon chart visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
