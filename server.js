@@ -70,8 +70,9 @@ function filterCpuMetrics(data) {
       } else if (!key.match(/cluster CPU \d+/) && 
                  !key.startsWith('mock') && 
                  !key.startsWith('mock.test.value.count') &&
-                 !key.match(/\[\d+\]\s+[EP]\d+-cluster\s+total/)) {
-        // Include other metrics but exclude individual CPUs, mocks, and original E/P clusters
+                 !key.match(/\[\d+\]\s+[EP]\d+-cluster\s+total/) &&
+                 !(key.endsWith(' power') && key !== 'total power')) {
+        // Include other metrics but exclude individual CPUs, mocks, original E/P clusters, and component power (except total)
         filtered[key] = value;
       }
     }
