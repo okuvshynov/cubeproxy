@@ -174,6 +174,10 @@
             if (metricName.indexOf('GPU') !== -1 && metricName.indexOf('util') !== -1) {
                 return 100;
             }
+            // Use 100% limit for RAM percentage metrics
+            if (metricName.indexOf('RAM') !== -1 && metricName.indexOf('%') !== -1) {
+                return 100;
+            }
             
             // For other metrics, use the max value from history
             return Math.max.apply(Math, history);
