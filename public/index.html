@@ -31,7 +31,7 @@
         }
         
         .metric-row {
-            height: 20px;
+            height: 32px;
             position: absolute;
             width: 100%;
             border-bottom: 1px solid #333;
@@ -39,12 +39,12 @@
         
         .metric-label {
             position: absolute;
-            left: 2px;
-            top: 2px;
-            font-size: 10px;
+            left: 4px;
+            top: 4px;
+            font-size: 12px;
             z-index: 2;
             background: rgba(0,0,0,0.7);
-            padding: 0 2px;
+            padding: 2px 4px;
             white-space: nowrap;
             overflow: hidden;
             max-width: 100px;
@@ -55,7 +55,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 20px;
+            height: 32px;
         }
         
         .loading {
@@ -132,7 +132,7 @@
         
         function createHorizonChart(data, maxValue, width, height) {
             width = width || 320;
-            height = height || 20;
+            height = height || 32;
             
             var canvas = document.createElement('canvas');
             canvas.width = width;
@@ -190,8 +190,8 @@
             var metrics = data.metrics;
             var metricNames = Object.keys(metrics);
             
-            // Limit to first 24 metrics to fit in 480px height
-            var displayMetrics = metricNames.slice(0, 24);
+            // Limit to first 15 metrics to fit in 480px height (15 * 32px = 480px)
+            var displayMetrics = metricNames.slice(0, 15);
             
             for (var i = 0; i < displayMetrics.length; i++) {
                 var metricName = displayMetrics[i];
@@ -200,7 +200,7 @@
                 
                 var row = document.createElement('div');
                 row.className = 'metric-row';
-                row.style.top = (i * 21) + 'px';
+                row.style.top = (i * 33) + 'px';
                 
                 var label = document.createElement('div');
                 label.className = 'metric-label';
