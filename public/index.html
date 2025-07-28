@@ -88,32 +88,63 @@
             e.preventDefault();
         }, { passive: false });
         
-        let metricsData = null;
-        let updateInterval = null;
+        var metricsData = null;
+        var updateInterval = null;
         
-        async function fetchMetrics() {
-            try {
-                const response = await fetch('/api/metrics');
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Error fetching metrics:', error);
-                return null;
-            }
+        function fetchMetrics(callback) {
+            // iPhone 3G doesn't support fetch API or Promises, use XMLHttpRequest with callback
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/metrics', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            showError('JSON parse error: ' + e.message);
+                            callback(null);
+                            return;
+                        }
+                        
+                        // Call callback separately to avoid catching callback errors
+                        try {
+                            callback(data);
+                        } catch (e) {
+                            showError('Render error: ' + e.message);
+                        }
+                    } else {
+                        showError('HTTP ' + xhr.status + ': ' + xhr.statusText);
+                        callback(null);
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                showError('Network error - cannot reach server');
+                callback(null);
+            };
+            xhr.ontimeout = function() {
+                showError('Request timeout');
+                callback(null);
+            };
+            xhr.timeout = 10000; // 10 second timeout
+            xhr.send();
         }
         
-        function createHorizonChart(data, maxValue, width = 320, height = 20) {
-            const canvas = document.createElement('canvas');
+        function createHorizonChart(data, maxValue, width, height) {
+            width = width || 320;
+            height = height || 20;
+            
+            var canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             canvas.className = 'horizon-chart';
             
-            const ctx = canvas.getContext('2d');
-            const dataPoints = data.length;
-            const stepX = width / dataPoints;
+            var ctx = canvas.getContext('2d');
+            var dataPoints = data.length;
+            var stepX = width / dataPoints;
             
             // Create gradient for positive values
-            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            var gradient = ctx.createLinearGradient(0, 0, 0, height);
             gradient.addColorStop(0, '#00ff00');
             gradient.addColorStop(0.5, '#ffff00');
             gradient.addColorStop(1, '#ff0000');
@@ -121,13 +152,13 @@
             ctx.fillStyle = gradient;
             
             // Draw the horizon chart
-            for (let i = 0; i < dataPoints; i++) {
-                const value = data[i] || 0;
-                const normalizedValue = Math.min(value / maxValue, 1);
-                const barHeight = normalizedValue * height;
+            for (var i = 0; i < dataPoints; i++) {
+                var value = data[i] || 0;
+                var normalizedValue = Math.min(value / maxValue, 1);
+                var barHeight = normalizedValue * height;
                 
-                const x = i * stepX;
-                const y = height - barHeight;
+                var x = i * stepX;
+                var y = height - barHeight;
                 
                 ctx.fillRect(x, y, stepX, barHeight);
             }
@@ -137,66 +168,68 @@
         
         function getMaxValueForMetric(metricName, history) {
             // Use hardcoded limits for CPU and GPU utilization metrics (100%)
-            if (metricName.includes('CPU') && metricName.includes('util %')) {
+            if (metricName.indexOf('CPU') !== -1 && metricName.indexOf('util %') !== -1) {
                 return 100;
             }
-            if (metricName.includes('GPU') && metricName.includes('util')) {
+            if (metricName.indexOf('GPU') !== -1 && metricName.indexOf('util') !== -1) {
                 return 100;
             }
             
             // For other metrics, use the max value from history
-            return Math.max(...history);
+            return Math.max.apply(Math, history);
         }
         
         function renderMetrics(data) {
-            const container = document.getElementById('container');
+            var container = document.getElementById('container');
             container.innerHTML = '';
             
-            const metrics = data.metrics;
-            const metricNames = Object.keys(metrics);
+            var metrics = data.metrics;
+            var metricNames = Object.keys(metrics);
             
             // Limit to first 24 metrics to fit in 480px height
-            const displayMetrics = metricNames.slice(0, 24);
+            var displayMetrics = metricNames.slice(0, 24);
             
-            displayMetrics.forEach((metricName, index) => {
-                const metric = metrics[metricName];
-                const maxValue = getMaxValueForMetric(metricName, metric.history);
+            for (var i = 0; i < displayMetrics.length; i++) {
+                var metricName = displayMetrics[i];
+                var metric = metrics[metricName];
+                var maxValue = getMaxValueForMetric(metricName, metric.history);
                 
-                const row = document.createElement('div');
+                var row = document.createElement('div');
                 row.className = 'metric-row';
-                row.style.top = (index * 21) + 'px';
+                row.style.top = (i * 21) + 'px';
                 
-                const label = document.createElement('div');
+                var label = document.createElement('div');
                 label.className = 'metric-label';
                 label.textContent = metricName.replace(/^E0-cluster /, '').replace(/ util %$/, '');
                 
-                const chart = createHorizonChart(metric.history, maxValue);
+                var chart = createHorizonChart(metric.history, maxValue);
                 
                 row.appendChild(chart);
                 row.appendChild(label);
                 container.appendChild(row);
-            });
+            }
         }
         
         function showError(message) {
-            const container = document.getElementById('container');
-            container.innerHTML = `<div class="error">${message}</div>`;
+            var container = document.getElementById('container');
+            container.innerHTML = '<div class="error">' + message + '</div>';
         }
         
-        async function updateData() {
-            const data = await fetchMetrics();
-            if (data) {
-                renderMetrics(data);
-            } else {
-                showError('Failed to load metrics data');
-            }
+        function updateData() {
+            fetchMetrics(function(data) {
+                if (data) {
+                    renderMetrics(data);
+                } else {
+                    showError('Failed to load metrics data');
+                }
+            });
         }
         
         // Initial load
         updateData();
         
-        // Update every 5 seconds
-        updateInterval = setInterval(updateData, 5000);
+        // Update every 15 seconds
+        updateInterval = setInterval(updateData, 15000);
         
         // Handle visibility change to pause updates when not visible
         document.addEventListener('visibilitychange', function() {
@@ -208,7 +241,7 @@
             } else {
                 if (!updateInterval) {
                     updateData();
-                    updateInterval = setInterval(updateData, 5000);
+                    updateInterval = setInterval(updateData, 15000);
                 }
             }
         });
