@@ -208,7 +208,7 @@
                 
                 var label = document.createElement('div');
                 label.className = 'metric-label';
-                label.textContent = metricName.replace(/^E0-cluster /, '').replace(/ util %$/, '');
+                label.textContent = metricName;
                 
                 var chart = createHorizonChart(metric.history, maxValue);
                 

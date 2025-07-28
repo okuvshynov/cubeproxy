@@ -96,45 +96,89 @@ function filterCpuMetrics(data) {
     }
   }
   
+  // Build ordered metrics object
+  const orderedMetrics = {};
+  
+  // 1. COMPUTE GROUP (CPU, GPU, ANE)
   // Aggregate E-clusters if any exist
   if (Object.keys(eClusters).length > 0) {
-    filtered['CPU E-clusters avg %'] = aggregateClusters(eClusters);
+    orderedMetrics['E-CPU %'] = aggregateClusters(eClusters);
   }
   
   // Aggregate P-clusters if any exist
   if (Object.keys(pClusters).length > 0) {
-    filtered['CPU P-clusters avg %'] = aggregateClusters(pClusters);
+    orderedMetrics['P-CPU %'] = aggregateClusters(pClusters);
   }
   
+  // Add GPU util % if exists
+  if (filtered['GPU util %']) {
+    orderedMetrics['GPU %'] = filtered['GPU util %'];
+  }
+  
+  // Add ANE util % if exists
+  if (filtered['ANE util %']) {
+    orderedMetrics['ANE %'] = filtered['ANE util %'];
+  }
+  
+  // 2. MEMORY GROUP (RAM, Swap)
   // Process RAM metrics
   if (ramUsed && ramUsedPercent && ramWired) {
     // Calculate total RAM from used RAM and used percentage
-    // total = used / (used% / 100)
     const totalRam = calculateTotalRam(ramUsed, ramUsedPercent);
     
-    // Add RAM used % (already exists, just ensure it's included)
+    // Add RAM used %
     if (ramUsedPercent) {
-      filtered['RAM used %'] = ramUsedPercent;
+      orderedMetrics['RAM used %'] = ramUsedPercent;
     }
     
     // Calculate and add RAM wired %
     const ramWiredPercent = calculateRamWiredPercent(ramWired, totalRam);
     if (ramWiredPercent) {
-      filtered['RAM wired %'] = ramWiredPercent;
+      orderedMetrics['RAM wired %'] = ramWiredPercent;
     }
     
     // Process swap metric if available
     if (swapUsed && totalRam) {
       const swapPercent = calculateSwapPercent(swapUsed, totalRam);
       if (swapPercent) {
-        filtered['swap used %'] = swapPercent;
+        orderedMetrics['Swap %'] = swapPercent;
       }
+    }
+  }
+  
+  // 3. IO GROUP (Network, Disk)
+  if (filtered['network rx']) {
+    orderedMetrics['Network RX'] = filtered['network rx'];
+  }
+  if (filtered['network tx']) {
+    orderedMetrics['Network TX'] = filtered['network tx'];
+  }
+  if (filtered['disk read']) {
+    orderedMetrics['Disk Read'] = filtered['disk read'];
+  }
+  if (filtered['disk write']) {
+    orderedMetrics['Disk Write'] = filtered['disk write'];
+  }
+  
+  // 4. POWER GROUP
+  if (filtered['total power']) {
+    orderedMetrics['Power'] = filtered['total power'];
+  }
+  
+  // 5. Add any remaining metrics that don't fit the categories
+  for (const [key, value] of Object.entries(filtered)) {
+    if (!key.includes('GPU util') && 
+        !key.includes('ANE util') &&
+        !key.includes('network') &&
+        !key.includes('disk') &&
+        !key.includes('total power')) {
+      orderedMetrics[key] = value;
     }
   }
   
   return {
     timestamp: data.timestamp,
-    metrics: filtered
+    metrics: orderedMetrics
   };
 }
 
