@@ -178,6 +178,10 @@
             if (metricName.indexOf('RAM') !== -1 && metricName.indexOf('%') !== -1) {
                 return 100;
             }
+            // Use 100% limit for swap metrics (same scale as RAM)
+            if (metricName.toLowerCase().indexOf('swap') !== -1) {
+                return 100;
+            }
             
             // For other metrics, use the max value from history
             return Math.max.apply(Math, history);

@@ -54,21 +54,24 @@ function filterCpuMetrics(data) {
   const eClusters = {};
   const pClusters = {};
   
-  // Collect RAM metrics for processing
+  // Collect RAM and swap metrics for processing
   let ramUsed = null;
   let ramUsedPercent = null;
   let ramWired = null;
+  let swapUsed = null;
   
   // Include all metric categories (cpu, gpu, memory, etc.)
   for (const [category, categoryMetrics] of Object.entries(allMetrics)) {
     for (const [key, value] of Object.entries(categoryMetrics)) {
-      // Collect RAM metrics for later processing
+      // Collect RAM and swap metrics for later processing
       if (key === 'RAM used') {
         ramUsed = value;
       } else if (key === 'RAM used %') {
         ramUsedPercent = value;
       } else if (key === 'RAM wired') {
         ramWired = value;
+      } else if (key === 'swap used') {
+        swapUsed = value;
       }
       
       // Check for E/P cluster patterns like "[4] E0-cluster total" or "[4] P1-cluster total"
@@ -86,8 +89,8 @@ function filterCpuMetrics(data) {
                  !key.startsWith('mock.test.value.count') &&
                  !key.match(/\[\d+\]\s+[EP]\d+-cluster\s+total/) &&
                  !(key.endsWith(' power') && key !== 'total power') &&
-                 key !== 'RAM used' && key !== 'RAM wired') {
-        // Include other metrics but exclude individual CPUs, mocks, original E/P clusters, component power (except total), and RAM metrics we'll process
+                 key !== 'RAM used' && key !== 'RAM wired' && key !== 'swap used') {
+        // Include other metrics but exclude individual CPUs, mocks, original E/P clusters, component power (except total), and RAM/swap metrics we'll process
         filtered[key] = value;
       }
     }
@@ -118,6 +121,14 @@ function filterCpuMetrics(data) {
     const ramWiredPercent = calculateRamWiredPercent(ramWired, totalRam);
     if (ramWiredPercent) {
       filtered['RAM wired %'] = ramWiredPercent;
+    }
+    
+    // Process swap metric if available
+    if (swapUsed && totalRam) {
+      const swapPercent = calculateSwapPercent(swapUsed, totalRam);
+      if (swapPercent) {
+        filtered['swap used %'] = swapPercent;
+      }
     }
   }
   
@@ -209,6 +220,40 @@ function calculateRamWiredPercent(ramWired, totalRam) {
   return {
     current_value: currentWiredPercent,
     history: wiredPercentHistory,
+    count: historyLength
+  };
+}
+
+function calculateSwapPercent(swapUsed, totalRam) {
+  const historyLength = swapUsed.history.length;
+  const swapPercentHistory = new Array(historyLength);
+  
+  // Calculate swap percentage for each point in history
+  for (let i = 0; i < historyLength; i++) {
+    const swap = swapUsed.history[i] || 0;
+    const total = totalRam.history[i] || 0;
+    if (total > 0) {
+      const percent = (swap / total) * 100;
+      // Cap at 100% if swap exceeds RAM size
+      swapPercentHistory[i] = Math.min(percent, 100);
+    } else {
+      swapPercentHistory[i] = 0;
+    }
+  }
+  
+  // Calculate current swap percentage
+  const currentSwap = swapUsed.current_value || 0;
+  const currentTotal = totalRam.current || 0;
+  let currentSwapPercent = 0;
+  if (currentTotal > 0) {
+    currentSwapPercent = (currentSwap / currentTotal) * 100;
+    // Cap at 100% if swap exceeds RAM size
+    currentSwapPercent = Math.min(currentSwapPercent, 100);
+  }
+  
+  return {
+    current_value: currentSwapPercent,
+    history: swapPercentHistory,
     count: historyLength
   };
 }
