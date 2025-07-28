@@ -32,7 +32,8 @@
         
         .metric-row {
             height: 20px;
-            position: relative;
+            position: absolute;
+            width: 100%;
             border-bottom: 1px solid #333;
         }
         
@@ -163,7 +164,7 @@
                 
                 const row = document.createElement('div');
                 row.className = 'metric-row';
-                row.style.top = (index * 20) + 'px';
+                row.style.top = (index * 21) + 'px';
                 
                 const label = document.createElement('div');
                 label.className = 'metric-label';
