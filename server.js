@@ -53,8 +53,10 @@ function filterCpuMetrics(data) {
   // Include all metric categories (cpu, gpu, memory, etc.)
   for (const [category, categoryMetrics] of Object.entries(allMetrics)) {
     for (const [key, value] of Object.entries(categoryMetrics)) {
-      // Only exclude individual CPU cores (pattern 'cluster CPU <number>')
-      if (!key.match(/cluster CPU \d+/)) {
+      // Exclude individual CPU cores and mock metrics
+      if (!key.match(/cluster CPU \d+/) && 
+          !key.startsWith('mock') && 
+          !key.startsWith('mock.test.value.count')) {
         filtered[key] = value;
       }
     }
