@@ -140,8 +140,11 @@
             canvas.className = 'horizon-chart';
             
             var ctx = canvas.getContext('2d');
-            var dataPoints = data.length;
-            var stepX = width / dataPoints;
+            var stepX = 1; // Always use stepX = 1
+            
+            // Take only the latest 'width' points
+            var pointsToShow = Math.min(data.length, width);
+            var startIndex = Math.max(0, data.length - width);
             
             // Create gradient for positive values
             var gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -152,12 +155,16 @@
             ctx.fillStyle = gradient;
             
             // Draw the horizon chart
-            for (var i = 0; i < dataPoints; i++) {
-                var value = data[i] || 0;
+            // Position data on the right when fewer than 'width' points
+            var startX = width - pointsToShow;
+            
+            for (var i = 0; i < pointsToShow; i++) {
+                var dataIndex = startIndex + i;
+                var value = data[dataIndex] || 0;
                 var normalizedValue = Math.min(value / maxValue, 1);
                 var barHeight = normalizedValue * height;
                 
-                var x = i * stepX;
+                var x = startX + i * stepX;
                 var y = height - barHeight;
                 
                 ctx.fillRect(x, y, stepX, barHeight);
