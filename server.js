@@ -178,6 +178,7 @@ function filterCpuMetrics(data) {
   
   return {
     timestamp: data.timestamp,
+    metadata: data.metadata,
     metrics: orderedMetrics
   };
 }
