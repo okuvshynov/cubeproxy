@@ -15,7 +15,7 @@
         
         body {
             font-family: Arial, sans-serif;
-            background: #000;
+            background: #fff;
             color: #fff;
             overflow: hidden;
             position: fixed;
@@ -34,7 +34,7 @@
             height: 32px;
             position: absolute;
             width: 100%;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #aaa;
         }
         
         .metric-label {
@@ -43,7 +43,7 @@
             top: 4px;
             font-size: 12px;
             z-index: 2;
-            background: rgba(0,0,0,0.7);
+            color: rgba(0, 0, 0, 0.7);
             padding: 2px 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -130,9 +130,10 @@
             xhr.send();
         }
         
-        function createHorizonChart(data, maxValue, width, height) {
+        function createHorizonChart(data, maxValue, width, height, bands) {
             width = width || 320;
             height = height || 32;
+            bands = bands || 4;
             
             var canvas = document.createElement('canvas');
             canvas.width = width;
@@ -146,28 +147,47 @@
             var pointsToShow = Math.min(data.length, width);
             var startIndex = Math.max(0, data.length - width);
             
-            // Create gradient for positive values
-            var gradient = ctx.createLinearGradient(0, 0, 0, height);
-            gradient.addColorStop(0, '#00ff00');
-            gradient.addColorStop(0.5, '#ffff00');
-            gradient.addColorStop(1, '#ff0000');
+            // Define band colors for positive values (green scheme)
+            // Each band gets progressively darker/more intense
+            var bandColors = ["#edf8e9", "#bae4b3", "#74c476", "#238b45"];
             
-            ctx.fillStyle = gradient;
+            // Use only the number of bands requested
+            var colors = bandColors.slice(0, bands);
             
-            // Draw the horizon chart
+            // Band height is the full chart height
+            var bandHeight = height;
+            var bandSize = maxValue / bands;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
             // Position data on the right when fewer than 'width' points
             var startX = width - pointsToShow;
             
-            for (var i = 0; i < pointsToShow; i++) {
-                var dataIndex = startIndex + i;
-                var value = data[dataIndex] || 0;
-                var normalizedValue = Math.min(value / maxValue, 1);
-                var barHeight = normalizedValue * height;
+            // Draw each band layer from bottom to top
+            for (var band = 0; band < bands; band++) {
+                ctx.fillStyle = colors[band];
                 
-                var x = startX + i * stepX;
-                var y = height - barHeight;
-                
-                ctx.fillRect(x, y, stepX, barHeight);
+                // For each data point
+                for (var i = 0; i < pointsToShow; i++) {
+                    var dataIndex = startIndex + i;
+                    var value = data[dataIndex] || 0;
+                    
+                    // Calculate how much of this band is filled
+                    var bandMin = band * bandSize;
+                    var bandMax = (band + 1) * bandSize;
+                    
+                    if (value > bandMin) {
+                        // Calculate the height within this band
+                        var valueInBand = Math.min(value - bandMin, bandSize);
+                        var fillHeight = (valueInBand / bandSize) * bandHeight;
+                        
+                        var x = startX + i * stepX;
+                        var y = height - fillHeight;
+                        
+                        ctx.fillRect(x, y, stepX, fillHeight);
+                    }
+                }
             }
             
             return canvas;
@@ -217,7 +237,9 @@
                 label.className = 'metric-label';
                 label.textContent = metricName;
                 
-                var chart = createHorizonChart(metric.history, maxValue);
+                // Use 4 bands for most metrics, but could adjust based on metric type
+                var bands = 4;
+                var chart = createHorizonChart(metric.history, maxValue, 320, 32, bands);
                 
                 row.appendChild(chart);
                 row.appendChild(label);

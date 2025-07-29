@@ -52,9 +52,15 @@ Metrics presented in hierarchical groups:
 
 ### 4. Visualization
 - **Horizon Charts**: 32px height, 320px width
+- **Technique**: True horizon chart with layered bands (default 4 bands)
 - **Scaling**: 100% max for all percentage metrics, dynamic for others
-- **Colors**: Green → Yellow → Red gradient
+- **Colors**: Green color scheme with increasing intensity per band:
+  - Band 1: Light green (rgba(199, 233, 192, 0.8))
+  - Band 2: Medium light green (rgba(161, 217, 155, 0.8))
+  - Band 3: Medium green (rgba(116, 196, 118, 0.8))
+  - Band 4: Dark green (rgba(49, 163, 84, 0.8))
 - **Layout**: 15 metrics max, 32px + 1px border spacing
+- **Data Display**: Shows latest 'width' points with 1-pixel-per-point rendering, right-aligned when fewer points available
 
 ## iPhone 3G Compatibility Measures
 
@@ -85,6 +91,8 @@ The project evolved through systematic optimizations:
 7. **Visual Enhancement** (796d939): Increased row height for better visibility
 8. **Swap Integration** (51ed44c): Added swap as percentage of RAM with 100% cap
 9. **Final Organization** (11c031c): Renamed and logically ordered all metrics
+10. **1-Pixel Rendering** (83c8eb9): Fixed stepX to 1 pixel per data point with right-alignment
+11. **True Horizon Charts**: Implemented proper horizon chart technique with layered bands instead of simple gradient bars
 
 ## Key Technical Decisions
 
