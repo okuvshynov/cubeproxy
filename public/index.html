@@ -101,22 +101,218 @@
             color: #333;
             transform: translateX(-50%);
         }
+        
+        #value-line {
+            position: absolute;
+            top: 0;
+            width: 1px;
+            height: 400px;
+            background: #ff0000;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        
+        .value-display {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 11;
+        }
     </style>
 </head>
 <body>
     <div id="container">
         <div class="loading">Loading metrics...</div>
+        <div id="value-line"></div>
     </div>
     <div id="time-scale"></div>
     
     <script>
-        // Prevent scrolling and bouncing
+        // Prevent scrolling and bouncing, but allow our touch interactions
         document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
+            // Only prevent if not interacting with our container
+            if (!e.target.closest('#container')) {
+                e.preventDefault();
+            }
         }, { passive: false });
         
         var metricsData = null;
         var updateInterval = null;
+        
+        // Add touch/click interaction for value display
+        function setupInteraction() {
+            var container = document.getElementById('container');
+            
+            function handleInteraction(event) {
+                if (!metricsData) return;
+                
+                var rect = container.getBoundingClientRect();
+                var x = (event.clientX || (event.touches && event.touches[0].clientX)) - rect.left;
+                
+                showValuesAtPosition(x);
+                event.preventDefault();
+            }
+            
+            function hideValues() {
+                var valueLine = document.getElementById('value-line');
+                valueLine.style.display = 'none';
+                
+                // Remove all value displays from container
+                var existingDisplays = container.querySelectorAll('.value-display');
+                for (var i = 0; i < existingDisplays.length; i++) {
+                    container.removeChild(existingDisplays[i]);
+                }
+                
+                // Remove time display from time scale
+                var timeDisplay = document.getElementById('time-display');
+                if (timeDisplay && timeDisplay.parentNode) {
+                    timeDisplay.parentNode.removeChild(timeDisplay);
+                }
+            }
+            
+            // Mouse events for desktop testing
+            container.addEventListener('mousedown', handleInteraction);
+            container.addEventListener('mouseup', hideValues);
+            
+            // Touch events for iPhone
+            container.addEventListener('touchstart', handleInteraction);
+            container.addEventListener('touchend', hideValues);
+        }
+        
+        function showValuesAtPosition(x) {
+            if (!metricsData) return;
+            
+            var container = document.getElementById('container');
+            var valueLine = document.getElementById('value-line');
+            
+            // Remove existing value displays
+            var existingDisplays = container.querySelectorAll('.value-display');
+            for (var i = 0; i < existingDisplays.length; i++) {
+                container.removeChild(existingDisplays[i]);
+            }
+            
+            // Remove existing time display from time scale
+            var existingTimeDisplay = document.getElementById('time-display');
+            if (existingTimeDisplay && existingTimeDisplay.parentNode) {
+                existingTimeDisplay.parentNode.removeChild(existingTimeDisplay);
+            }
+            
+            // Show vertical line
+            valueLine.style.left = x + 'px';
+            valueLine.style.display = 'block';
+            
+            // Get refresh interval from metadata
+            var refreshMs = 1000;
+            if (metricsData.metadata && metricsData.metadata.refresh_ms) {
+                refreshMs = metricsData.metadata.refresh_ms;
+            }
+            
+            // Calculate which data point this corresponds to
+            var metrics = metricsData.metrics;
+            var metricNames = Object.keys(metrics);
+            if (metricNames.length === 0) return;
+            
+            var firstMetric = metrics[metricNames[0]];
+            var historyLength = firstMetric.history ? firstMetric.history.length : 0;
+            if (historyLength === 0) return;
+            
+            // Calculate time index from position (accounting for right-alignment)
+            var chartWidth = 320;
+            var pointsToShow = Math.min(historyLength, chartWidth);
+            var startX = chartWidth - pointsToShow;
+            
+            if (x < startX) return; // Outside data area
+            
+            var relativeX = x - startX;
+            var dataIndex = Math.floor(relativeX);
+            var actualIndex = Math.max(0, historyLength - chartWidth) + dataIndex;
+            
+            if (actualIndex >= historyLength) return;
+            
+            // Calculate time for this point
+            var timeMs = (historyLength - 1 - actualIndex) * refreshMs;
+            var timeText;
+            if (timeMs === 0) {
+                timeText = 'now';
+            } else {
+                var seconds = Math.floor(timeMs / 1000);
+                if (seconds < 60) {
+                    timeText = seconds + 's ago';
+                } else {
+                    var minutes = Math.floor(seconds / 60);
+                    var remainingSeconds = seconds % 60;
+                    if (remainingSeconds === 0) {
+                        timeText = minutes + 'm ago';
+                    } else {
+                        timeText = minutes + 'm' + remainingSeconds + 's ago';
+                    }
+                }
+            }
+            
+            // Show values for each visible metric
+            var displayMetrics = metricNames.slice(0, 12);
+            for (var i = 0; i < displayMetrics.length; i++) {
+                var metricName = displayMetrics[i];
+                var metric = metrics[metricName];
+                var value = metric.history[actualIndex];
+                
+                if (value !== undefined && value !== null) {
+                    var valueDisplay = document.createElement('div');
+                    valueDisplay.className = 'value-display';
+                    
+                    // Format value
+                    var formattedValue;
+                    if (metricName.indexOf('%') !== -1) {
+                        formattedValue = value.toFixed(1) + '%';
+                    } else if (value >= 1000000) {
+                        formattedValue = (value / 1000000).toFixed(1) + 'M';
+                    } else if (value >= 1000) {
+                        formattedValue = (value / 1000).toFixed(1) + 'K';
+                    } else {
+                        formattedValue = value.toFixed(1);
+                    }
+                    
+                    valueDisplay.textContent = metricName + ': ' + formattedValue;
+                    
+                    // Position next to the line, alternate sides to avoid overlap
+                    var rowY = i * 33 + 16; // Center of each metric row
+                    valueDisplay.style.top = rowY + 'px';
+                    
+                    if (x > chartWidth / 2) {
+                        // Show on left side of line
+                        valueDisplay.style.right = (chartWidth - x + 5) + 'px';
+                    } else {
+                        // Show on right side of line
+                        valueDisplay.style.left = (x + 5) + 'px';
+                    }
+                    
+                    container.appendChild(valueDisplay);
+                }
+            }
+            
+            // Add time display at the bottom on the time scale
+            var timeScale = document.getElementById('time-scale');
+            var timeDisplay = document.createElement('div');
+            timeDisplay.className = 'value-display';
+            timeDisplay.id = 'time-display';
+            timeDisplay.textContent = timeText;
+            timeDisplay.style.bottom = '22px';
+            timeDisplay.style.position = 'absolute';
+            
+            if (x > chartWidth / 2) {
+                timeDisplay.style.right = (chartWidth - x + 5) + 'px';
+            } else {
+                timeDisplay.style.left = (x + 5) + 'px';
+            }
+            
+            timeScale.appendChild(timeDisplay);
+        }
         
         function fetchMetrics(callback) {
             // iPhone 3G doesn't support fetch API or Promises, use XMLHttpRequest with callback
@@ -242,8 +438,10 @@
         }
         
         function renderMetrics(data) {
+            metricsData = data; // Store globally for interaction
+            
             var container = document.getElementById('container');
-            container.innerHTML = '';
+            container.innerHTML = '<div id="value-line"></div>'; // Keep the value line when clearing
             
             var metrics = data.metrics;
             var metricNames = Object.keys(metrics);
@@ -381,6 +579,9 @@
         
         // Initial load
         updateData();
+        
+        // Setup touch/click interaction
+        setupInteraction();
         
         // Update every 15 seconds
         updateInterval = setInterval(updateData, 15000);
