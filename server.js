@@ -74,9 +74,9 @@ function filterCpuMetrics(data) {
         swapUsed = value;
       }
       
-      // Check for E/P cluster patterns like "[4] E0-cluster total" or "[4] P1-cluster total"
-      const eClusterMatch = key.match(/\[\d+\]\s+E(\d+)-cluster\s+total/);
-      const pClusterMatch = key.match(/\[\d+\]\s+P(\d+)-cluster\s+total/);
+      // Check for E/P cluster patterns like "[4] E0-cluster total", "[4] P1-cluster total", or "[4] E-cluster total", "[4] P-cluster total"
+      const eClusterMatch = key.match(/\[\d+\]\s+E(\d*)-?cluster\s+total/);
+      const pClusterMatch = key.match(/\[\d+\]\s+P(\d*)-?cluster\s+total/);
       
       if (eClusterMatch) {
         // Store E-cluster data for aggregation
@@ -87,7 +87,7 @@ function filterCpuMetrics(data) {
       } else if (!key.match(/cluster CPU \d+/) && 
                  !key.startsWith('mock') && 
                  !key.startsWith('mock.test.value.count') &&
-                 !key.match(/\[\d+\]\s+[EP]\d+-cluster\s+total/) &&
+                 !key.match(/\[\d+\]\s+[EP](\d*)-?cluster\s+total/) &&
                  !(key.endsWith(' power') && key !== 'total power') &&
                  key !== 'RAM used' && key !== 'RAM wired' && key !== 'swap used') {
         // Include other metrics but exclude individual CPUs, mocks, original E/P clusters, component power (except total), and RAM/swap metrics we'll process
