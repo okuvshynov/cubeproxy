@@ -134,12 +134,11 @@
     <div id="time-scale"></div>
     
     <script>
-        // Prevent scrolling and bouncing, but allow our touch interactions
+        // Prevent scrolling and bouncing
         document.addEventListener('touchmove', function(e) {
-            // Only prevent if not interacting with our container
-            if (!e.target.closest('#container')) {
-                e.preventDefault();
-            }
+            // Always prevent default to stop scrolling/bouncing
+            // Our touch handling will work regardless
+            e.preventDefault();
         }, { passive: false });
         
         var metricsData = null;
@@ -148,15 +147,35 @@
         // Add touch/click interaction for value display
         function setupInteraction() {
             var container = document.getElementById('container');
+            var isInteracting = false;
             
-            function handleInteraction(event) {
+            function handleInteractionStart(event) {
                 if (!metricsData) return;
                 
+                isInteracting = true;
                 var rect = container.getBoundingClientRect();
                 var x = (event.clientX || (event.touches && event.touches[0].clientX)) - rect.left;
                 
                 showValuesAtPosition(x);
                 event.preventDefault();
+            }
+            
+            function handleInteractionMove(event) {
+                if (!isInteracting || !metricsData) return;
+                
+                var rect = container.getBoundingClientRect();
+                var x = (event.clientX || (event.touches && event.touches[0].clientX)) - rect.left;
+                
+                // Clamp x to container bounds
+                x = Math.max(0, Math.min(x, 320));
+                
+                showValuesAtPosition(x);
+                event.preventDefault();
+            }
+            
+            function handleInteractionEnd() {
+                isInteracting = false;
+                hideValues();
             }
             
             function hideValues() {
@@ -177,12 +196,16 @@
             }
             
             // Mouse events for desktop testing
-            container.addEventListener('mousedown', handleInteraction);
-            container.addEventListener('mouseup', hideValues);
+            container.addEventListener('mousedown', handleInteractionStart);
+            container.addEventListener('mousemove', handleInteractionMove);
+            container.addEventListener('mouseup', handleInteractionEnd);
+            container.addEventListener('mouseleave', handleInteractionEnd);
             
             // Touch events for iPhone
-            container.addEventListener('touchstart', handleInteraction);
-            container.addEventListener('touchend', hideValues);
+            container.addEventListener('touchstart', handleInteractionStart);
+            container.addEventListener('touchmove', handleInteractionMove);
+            container.addEventListener('touchend', handleInteractionEnd);
+            container.addEventListener('touchcancel', handleInteractionEnd);
         }
         
         function showValuesAtPosition(x) {
