@@ -25,7 +25,7 @@
         
         #container {
             width: 320px;
-            height: 400px;
+            height: 460px;
             position: relative;
             overflow: hidden;
         }
@@ -76,37 +76,12 @@
             text-align: center;
         }
         
-        #time-scale {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 320px;
-            height: 40px;
-            background: #f0f0f0;
-            border-top: 1px solid #aaa;
-        }
-        
-        .time-tick {
-            position: absolute;
-            bottom: 0;
-            width: 1px;
-            height: 8px;
-            background: #666;
-        }
-        
-        .time-label {
-            position: absolute;
-            bottom: 10px;
-            font-size: 10px;
-            color: #333;
-            transform: translateX(-50%);
-        }
         
         #value-line {
             position: absolute;
             top: 0;
             width: 1px;
-            height: 400px;
+            height: 460px;
             background: #ff0000;
             pointer-events: none;
             z-index: 10;
@@ -131,7 +106,6 @@
         <div class="loading">Loading metrics...</div>
         <div id="value-line"></div>
     </div>
-    <div id="time-scale"></div>
     
     <script>
         // Prevent scrolling and bouncing
@@ -188,11 +162,6 @@
                     container.removeChild(existingDisplays[i]);
                 }
                 
-                // Remove time display from time scale
-                var timeDisplay = document.getElementById('time-display');
-                if (timeDisplay && timeDisplay.parentNode) {
-                    timeDisplay.parentNode.removeChild(timeDisplay);
-                }
             }
             
             // Mouse events for desktop testing
@@ -220,11 +189,6 @@
                 container.removeChild(existingDisplays[i]);
             }
             
-            // Remove existing time display from time scale
-            var existingTimeDisplay = document.getElementById('time-display');
-            if (existingTimeDisplay && existingTimeDisplay.parentNode) {
-                existingTimeDisplay.parentNode.removeChild(existingTimeDisplay);
-            }
             
             // Show vertical line
             valueLine.style.left = x + 'px';
@@ -279,7 +243,7 @@
             }
             
             // Show values for each visible metric
-            var displayMetrics = metricNames.slice(0, 12);
+            var displayMetrics = metricNames.slice(0, 15);
             for (var i = 0; i < displayMetrics.length; i++) {
                 var metricName = displayMetrics[i];
                 var metric = metrics[metricName];
@@ -319,13 +283,12 @@
                 }
             }
             
-            // Add time display at the bottom on the time scale
-            var timeScale = document.getElementById('time-scale');
+            // Add time display at the bottom of the container
             var timeDisplay = document.createElement('div');
             timeDisplay.className = 'value-display';
             timeDisplay.id = 'time-display';
             timeDisplay.textContent = timeText;
-            timeDisplay.style.bottom = '22px';
+            timeDisplay.style.bottom = '5px';
             timeDisplay.style.position = 'absolute';
             
             if (x > chartWidth / 2) {
@@ -334,7 +297,7 @@
                 timeDisplay.style.left = (x + 5) + 'px';
             }
             
-            timeScale.appendChild(timeDisplay);
+            container.appendChild(timeDisplay);
         }
         
         function fetchMetrics(callback) {
@@ -469,8 +432,8 @@
             var metrics = data.metrics;
             var metricNames = Object.keys(metrics);
             
-            // Limit to first 12 metrics to fit in 400px height (12 * 33px = 396px)
-            var displayMetrics = metricNames.slice(0, 12);
+            // Limit to first 15 metrics to fit in 480px height (15 * 33px = 495px)
+            var displayMetrics = metricNames.slice(0, 15);
             
             for (var i = 0; i < displayMetrics.length; i++) {
                 var metricName = displayMetrics[i];
@@ -494,96 +457,8 @@
                 container.appendChild(row);
             }
             
-            // Render time scale
-            renderTimeScale(data);
         }
         
-        function renderTimeScale(data) {
-            var timeScale = document.getElementById('time-scale');
-            timeScale.innerHTML = '';
-            
-            // Get refresh interval from metadata, default to 1000ms if not available
-            var refreshMs = 1000;
-            if (data.metadata && data.metadata.refresh_ms) {
-                refreshMs = data.metadata.refresh_ms;
-            }
-            
-            // Get the first metric to determine history length
-            var metrics = data.metrics;
-            var metricNames = Object.keys(metrics);
-            if (metricNames.length === 0) return;
-            
-            var firstMetric = metrics[metricNames[0]];
-            var historyLength = firstMetric.history ? firstMetric.history.length : 0;
-            if (historyLength === 0) return;
-            
-            // Calculate time range (most recent data point is at time 0)
-            var maxTimeMs = (historyLength - 1) * refreshMs;
-            var chartWidth = 320;
-            
-            // Show ticks every 10 seconds, 30 seconds, or 60 seconds depending on time range
-            var tickIntervalMs;
-            if (maxTimeMs <= 60000) { // <= 1 minute
-                tickIntervalMs = 10000; // 10 seconds
-            } else if (maxTimeMs <= 300000) { // <= 5 minutes
-                tickIntervalMs = 30000; // 30 seconds
-            } else {
-                tickIntervalMs = 60000; // 1 minute
-            }
-            
-            // Generate ticks
-            for (var timeMs = 0; timeMs <= maxTimeMs; timeMs += tickIntervalMs) {
-                var tick = document.createElement('div');
-                tick.className = 'time-tick';
-                
-                // Position tick (time 0 is on the right)
-                var pixelPosition = chartWidth - (timeMs / refreshMs);
-                if (pixelPosition >= 0 && pixelPosition <= chartWidth) {
-                    tick.style.left = pixelPosition + 'px';
-                    timeScale.appendChild(tick);
-                    
-                    // Add label for major ticks
-                    if (timeMs % (tickIntervalMs * 2) === 0) {
-                        var label = document.createElement('div');
-                        label.className = 'time-label';
-                        
-                        // Format time label
-                        var seconds = Math.floor(timeMs / 1000);
-                        var labelText;
-                        if (seconds === 0) {
-                            labelText = 'now';
-                        } else if (seconds < 60) {
-                            labelText = seconds + 's';
-                        } else {
-                            var minutes = Math.floor(seconds / 60);
-                            var remainingSeconds = seconds % 60;
-                            if (remainingSeconds === 0) {
-                                labelText = minutes + 'm';
-                            } else {
-                                labelText = minutes + 'm' + remainingSeconds + 's';
-                            }
-                        }
-                        label.textContent = labelText;
-                        
-                        // Adjust positioning to keep labels within screen bounds
-                        if (pixelPosition >= chartWidth - 15) {
-                            // For rightmost labels (like "now"), align right instead of center
-                            label.style.right = (chartWidth - pixelPosition) + 'px';
-                            label.style.transform = 'none';
-                        } else if (pixelPosition <= 15) {
-                            // For leftmost labels, align left instead of center
-                            label.style.left = pixelPosition + 'px';
-                            label.style.transform = 'none';
-                        } else {
-                            // For middle labels, use centered positioning
-                            label.style.left = pixelPosition + 'px';
-                        }
-                        
-                        timeScale.appendChild(label);
-                    }
-                }
-            }
-        }
         
         function showError(message) {
             var container = document.getElementById('container');
