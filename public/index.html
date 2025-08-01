@@ -117,6 +117,7 @@
         
         var metricsData = null;
         var updateInterval = null;
+        var REFRESH_INTERVAL_MS = 15000; // Refresh interval in milliseconds (15 seconds by default)
         
         // Add touch/click interaction for value display
         function setupInteraction() {
@@ -481,8 +482,8 @@
         // Setup touch/click interaction
         setupInteraction();
         
-        // Update every 15 seconds
-        updateInterval = setInterval(updateData, 15000);
+        // Update at configured interval
+        updateInterval = setInterval(updateData, REFRESH_INTERVAL_MS);
         
         // Handle visibility change to pause updates when not visible
         document.addEventListener('visibilitychange', function() {
@@ -494,7 +495,7 @@
             } else {
                 if (!updateInterval) {
                     updateData();
-                    updateInterval = setInterval(updateData, 15000);
+                    updateInterval = setInterval(updateData, REFRESH_INTERVAL_MS);
                 }
             }
         });
